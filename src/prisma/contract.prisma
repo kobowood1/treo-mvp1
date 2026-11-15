@@ -1,0 +1,257 @@
+// Treo — AI Algebra Coach
+// Prisma schema (PSL, postgres target)
+
+enum Role {
+  SCHOOL_ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum SessionStatus {
+  PENDING_EXTRACTION
+  PENDING_CONFIRMATION
+  VERIFIED
+  COACHING
+  RESOLVED
+  ABANDONED
+}
+
+enum HintLevel {
+  LEVEL_1
+  LEVEL_2
+  LEVEL_3
+}
+
+enum ErrorType {
+  SIGN_ERROR
+  DISTRIBUTION_ERROR
+  ARITHMETIC_ERROR
+  INVERSE_OPERATION_ERROR
+  COMBINING_UNLIKE_TERMS
+  INEQUALITY_DIRECTION_ERROR
+  INCOMPLETE_SOLUTION
+  CONCEPTUAL_MISUNDERSTANDING
+  OTHER
+}
+
+model School {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  classrooms   Classroom[]
+  invitations  Invitation[]
+  skillTags    SkillTag[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  role           Role
+  schoolId       String
+  school         School   @relation(fields: [schoolId], references: [id])
+
+  // Standard users (admin, teacher, parent) — email required
+  email          String?
+  emailVerified  DateTime?
+  passwordHash   String?
+
+  // Student-only fields (no email required)
+  username       String?
+  pinHash        String?
+  firstName      String?
+  lastInitial    String?
+
+  // Shared
+  displayName    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  classrooms           Classroom[]          @relation("TeacherClassrooms")
+  enrollments          Enrollment[]
+  parentLinksAsParent  ParentLink[]         @relation("ParentLinks")
+  parentLinksAsStudent ParentLink[]         @relation("StudentLinks")
+  sessions             ProblemSession[]
+  invitationsSent      Invitation[]         @relation("InviterInvitations")
+  weeklyReports        WeeklyParentReport[]
+  teacherOverrides     TeacherOverride[]
+
+  @@unique([schoolId, email])
+  @@unique([schoolId, username])
+}
+
+model Classroom {
+  id          String   @id @default(cuid())
+  name        String
+  joinCode    String   @unique
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  teacherId   String
+  teacher     User     @relation("TeacherClassrooms", fields: [teacherId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments Enrollment[]
+  sessions    ProblemSession[]
+}
+
+model Enrollment {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     User      @relation(fields: [studentId], references: [id])
+  classroomId String
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  joinedAt    DateTime  @default(now())
+
+  @@unique([studentId, classroomId])
+}
+
+model ParentLink {
+  id           String   @id @default(cuid())
+  parentId     String
+  parent       User     @relation("ParentLinks", fields: [parentId], references: [id])
+  studentId    String
+  student      User     @relation("StudentLinks", fields: [studentId], references: [id])
+  consentGiven Boolean  @default(false)
+  consentAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  @@unique([parentId, studentId])
+}
+
+model Invitation {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  invitedById String
+  invitedBy   User     @relation("InviterInvitations", fields: [invitedById], references: [id])
+  email       String
+  role        Role
+  token       String   @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model SkillTag {
+  id          String   @id @default(cuid())
+  name        String
+  schoolId    String?
+  school      School?  @relation(fields: [schoolId], references: [id])
+  sortOrder   Int      @default(0)
+  isGlobal    Boolean  @default(false)
+
+  sessionSkills SessionSkill[]
+
+  @@unique([name, schoolId])
+}
+
+model ProblemSession {
+  id             String        @id @default(cuid())
+  studentId      String
+  student        User          @relation(fields: [studentId], references: [id])
+  classroomId    String
+  classroom      Classroom     @relation(fields: [classroomId], references: [id])
+
+  // Image storage: keys in S3-compatible bucket
+  imageKeys      String[]      // 1–3 image object keys
+  status         SessionStatus @default(PENDING_EXTRACTION)
+  workStatus     String        @default("complete") // "complete" | "stuck"
+
+  // Extracted & confirmed content
+  problemLatex   String?
+  extractionJson Json?         // raw LLM extraction output
+  overallConfidence Float?
+
+  // Verification result
+  firstErrorStepIndex Int?
+  finalAnswerCorrect  Boolean?
+  verificationJson    Json?
+
+  // Diagnosis
+  errorType      ErrorType?
+  diagnosisNote  String?       // shown to teacher only
+  aiLogInput     String?       // raw prompt sent to AI
+  aiLogOutput    String?       // raw AI response
+
+  // Timing
+  startedAt      DateTime      @default(now())
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  steps           SessionStep[]
+  hints           HintEvent[]
+  skills          SessionSkill[]
+  override        TeacherOverride?
+}
+
+model SessionStep {
+  id          String         @id @default(cuid())
+  session     ProblemSession @relation(fields: [sessionId], references: [id])
+  sessionId   String
+  index       Int
+  latex       String
+  confidence  Float?
+  isCorrect   Boolean?       // null = not yet verified
+  editedBy    String?        // "student" | "teacher"
+  createdAt   DateTime       @default(now())
+
+  @@unique([sessionId, index])
+}
+
+model HintEvent {
+  id          String         @id @default(cuid())
+  session     ProblemSession @relation(fields: [sessionId], references: [id])
+  sessionId   String
+  level       HintLevel
+  hintText    String
+  studentResponse String?
+  responseLatex   String?
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+}
+
+model SessionSkill {
+  id          String         @id @default(cuid())
+  session     ProblemSession @relation(fields: [sessionId], references: [id])
+  sessionId   String
+  skill       SkillTag       @relation(fields: [skillId], references: [id])
+  skillId     String
+  isPrimary   Boolean        @default(false)
+
+  @@unique([sessionId, skillId])
+}
+
+model TeacherOverride {
+  id            String         @id @default(cuid())
+  session       ProblemSession @relation(fields: [sessionId], references: [id])
+  sessionId     String         @unique
+  teacher       User           @relation(fields: [teacherId], references: [id])
+  teacherId     String
+  errorType     ErrorType?
+  skillTagIds   String[]
+  isCorrect     Boolean?
+  note          String?
+  createdAt     DateTime       @default(now())
+}
+
+model WeeklyParentReport {
+  id             String   @id @default(cuid())
+  parent         User     @relation(fields: [parentId], references: [id])
+  parentId       String
+  studentId      String
+  weekStartDate  DateTime
+  goingWell      String
+  workOn         String
+  helpAtHome     String[]  // 2 items
+  activityCount  Int       @default(0)
+  generatedAt    DateTime  @default(now())
+  viewedAt       DateTime?
+
+  @@unique([parentId, studentId, weekStartDate])
+}

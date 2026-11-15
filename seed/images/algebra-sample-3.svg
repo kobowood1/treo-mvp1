@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" style="background:#fff">
+  <text x="20" y="40" font-family="cursive" font-size="28" fill="#1a1a1a">x/3 + 1 = 4</text>
+  <text x="20" y="100" font-family="cursive" font-size="24" fill="#1a1a1a">x/3 = 3</text>
+  <text x="20" y="155" font-family="cursive" font-size="24" fill="#1a1a1a">x = 9</text>
+</svg>
