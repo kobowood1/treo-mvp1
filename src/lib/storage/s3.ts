@@ -1,7 +1,7 @@
 /**
  * S3-compatible storage helper.
  * Uses AWS SDK v3 — configured entirely from env vars.
- * Works with MinIO (dev), AWS S3 (prod), or any S3-compatible service.
+ * Works with RustFS (dev), AWS S3 (prod), or any S3-compatible service.
  */
 
 import {

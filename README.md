@@ -40,11 +40,11 @@ Copy `.env.example` to `.env.local` and fill in:
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://treo:treo_dev_password@localhost:5432/treo_dev` |
 | `AUTH_SECRET` | Random secret for Auth.js JWT | `openssl rand -base64 32` |
-| `STORAGE_ENDPOINT` | S3-compatible endpoint | `http://localhost:9000` (MinIO) |
+| `STORAGE_ENDPOINT` | S3-compatible endpoint | `http://localhost:9000` (RustFS) |
 | `STORAGE_BUCKET` | Bucket name | `treo-uploads` |
 | `STORAGE_ACCESS_KEY_ID` | S3 access key | `treo_minio` |
 | `STORAGE_SECRET_ACCESS_KEY` | S3 secret | `treo_minio_secret` |
-| `STORAGE_FORCE_PATH_STYLE` | Required for MinIO | `true` |
+| `STORAGE_FORCE_PATH_STYLE` | Required for path-style S3 | `true` |
 | `AI_PROVIDER` | LLM backend | `openai` / `anthropic` / `openai-compatible` |
 | `AI_MODEL` | Model name | `gpt-4o` / `claude-3-5-sonnet-20241022` |
 | `AI_API_KEY` | Your API key | `sk-...` |

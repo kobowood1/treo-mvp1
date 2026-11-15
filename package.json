@@ -23,6 +23,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1162.0",
     "@prisma/client": "^5.22.0",
     "@prisma/orm-postgres": "^8.0.0-rc.22",
+    "@tailwindcss/postcss": "^4.3.5",
     "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.9",
     "katex": "^0.19.1",

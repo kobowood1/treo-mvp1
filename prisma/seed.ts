@@ -113,14 +113,19 @@ async function main() {
   }
 
   // ── Global skill tags ─────────────────────────────────────────────────────
+  // Note: Prisma can't use null in a compound unique where-clause, so we use
+  // findFirst + create instead of upsert for global (schoolId-less) tags.
   console.log("  Creating global skill tags…");
   const skillTagMap: Record<string, string> = {}; // name → id
   for (let i = 0; i < SKILL_NAMES.length; i++) {
-    const tag = await prisma.skillTag.upsert({
-      where: { name_schoolId: { name: SKILL_NAMES[i], schoolId: null as unknown as string } },
-      update: {},
-      create: { name: SKILL_NAMES[i], isGlobal: true, sortOrder: i + 1 },
+    let tag = await prisma.skillTag.findFirst({
+      where: { name: SKILL_NAMES[i], schoolId: null },
     });
+    if (!tag) {
+      tag = await prisma.skillTag.create({
+        data: { name: SKILL_NAMES[i], isGlobal: true, sortOrder: i + 1 },
+      });
+    }
     skillTagMap[tag.name] = tag.id;
   }
 
